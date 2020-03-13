@@ -1,0 +1,567 @@
+---
+title: 'Harvardx Data Science: Capstone - US City, sky will be clear!'
+author: "Mathieu Labelle"
+date: "MARCH 2020"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+---
+\newpage
+
+```{r Load useful libraries,echo=FALSE, message=FALSE, warning=FALSE}
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(dplyr)) install.packages("dplyr", repos = "http://cran.us.r-project.org")
+if(!require(gridExtra)) install.packages("gridExtra", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(lubridate)) install.packages("gridExtra", repos = "http://cran.us.r-project.org")
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
+if(!require(scales)) install.packages("scales", repos = "http://cran.us.r-project.org")
+if(!require(rpart)) install.packages("rpart", repos = "http://cran.us.r-project.org")
+if(!require(rpart.plot)) install.packages("rpart.plot", repos = "http://cran.us.r-project.org")
+```
+
+```{r Default not showing type in output,echo=FALSE}
+#Not showing Code, Alert and message in the document output
+opts_chunk$set(eval = TRUE, echo = FALSE, warning=FALSE, message=FALSE)
+```
+
+# 1 INTRODUCTION   
+  
+  
+You will find here a document that is part of my submission for "Choose Your Own!" Project (*“the Project”*) of HarvardX PH125.09x: DATA SCIENCE: Capstone.  
+This *Project* will show how to apply some of the knowledge base and skills learned throughout the “Data Science” Series.  
+I wish you a very good read! 
+  
+## 1.1 Summarize goal    
+Using "Historical Hourly Weather Data" dataset, which can be found by clicking here: [kaggle.com](https://www.kaggle.com/selfishgene/historical-hourly-weather-data), we will first create a workable dataset (the *Dataset*), and then we will work on a machine learning algorithm ("*the Algorithm*") in order to predict in the City Studied if the sky will be clear in 24H from variables given by the *Dataset*. Our *Algorithm* will gave a binary outcome (sky Is clear: Yes or no, respectively 1 or 0) and we will compute Models accuracy to measure performance and select the most accurate ones. 
+
+We will train our *Algorithm* with multiples variables and different Models.
+
+Here we choose New-York, but Data provided have 36 different Cities, so just change City_Studied by the one you want (you can find the list of city in 2.1.1).
+```{r Choose the City to study, eval=TRUE, echo=TRUE}
+#Define City_Studied as New.York
+City_Studied <- "New.York"
+```
+
+
+
+## 1.2 Key Steps  
+
+To create our *Algorithm*, we will use the methodology we saw in previous course: "Machine Learning".
+This methodology is to fit several different classes of Model to the data and select the one that gave the best accuracy.  
+
+  The Models we chosen to test are:  
+* "One day looks like the next"  
+* "Head and Tail"  
+* Linear Discriminant Analysis    
+* Quadratic Discriminant Analysis
+* Generalized Linear Model 
+* k-Nearest Neighbours  
+* Decision Tree  
+  
+Find here the keys step of" the *Project*:  
+a. Extract Data from ".csv" files found in the folder loaded from kaggle.com  
+a. Explore the *Dataset*, clean and wrangle Data to prepare our analysis  
+b. Create a *Train* and *Test set* from *Dataset* for Cross validation  
+c. Train our *Algorithm* with *train_set* and using the *Test set* to calculate accuracy  
+d. Draw Conclusion based on Results  
+e. Discuss the report, its potential impact, its limitations, and future work  
+
+## 1.3 Getting Raw Data from Kaggle.com or GitHub  
+As we said; data could be found by clicking here: [kaggle.com](https://www.kaggle.com/selfishgene/historical-hourly-weather-data), you have to load the folder :"historical-hourly-weather-data" and extract its seven ".csv" files.  
+You can find the files also directly in github by clicking here: [GitHub](https://github.com/MathieuLabelle/Harvard_Own_Project) along with my three reports in ".Rmd", ".pdf" and ".R".
+
+**The files should be save in your working directory.**    
+
+```{r Getting Data from the .CSV in the folder historical-hourly-weather-data saved on your workspace}
+City<- read.csv("~/city_attributes.csv")
+#save(City, file = "~/City.Rda")
+
+Humidity<- read.csv("~/humidity.csv")
+#save(Humidity, file = "~/Humidity.Rda")
+
+Pressure<- read.csv("~/pressure.csv")
+#save(Pressure, file = "~/Pressure.Rda")
+
+Temperature<- read.csv("~/temperature.csv")
+#save(Temperature, file = "~/Temperature.Rda")
+
+Weather_Description<- read.csv("~/weather_description.csv")
+#save(Weather_Description, file = "~/Weather.Rda")
+
+Wind_Direction<- read.csv("~/wind_direction.csv")
+#save(Wind_Direction, file = "~/Wind_Direction.Rda")
+
+Wind_Speed<- read.csv("~/wind_speed.csv")
+#save(Wind_Speed, file = "~/Wind_Speed.Rda")
+```
+
+\newpage
+
+# 2 DATA WRANGLING AND CLEANING  
+
+## 2.1 Preliminary works on Data   
+Let's look at each file:  
+
+### 2.1.1 city_attributes:    
+```{r looking into the city_attibutes}
+kable(City, caption= " Head of city_attributes file")
+```
+
+It shows us Latitude and Longitude and Country of each City. As we will study City_Studied, there is no need for us to include data from this file.  
+   
+### 2.1.2 humidity:  
+```{r looking into the humidity}
+kable(head(Humidity[1:3,]) %>% select (1:7), caption= "Head of humidity file")
+```
+
+It shows hourly humidity (in %) level by City, In this file, for our *Algorithm*, we will select only the City_Studied. We will need also to discard the first line with the NAs.  
+
+### 2.1.3 pressure:
+```{r looking into the pressure}
+kable(head(Pressure[1:3,]) %>% select (1:7), caption= "Head of pressure file")
+```
+
+It shows hourly pressure (in Bar) level by City, In this file, for our *Algorithm*, we will select only the City_Studied. We will need also to discard the first line with the NAs.  
+
+### 2.1.4 temperature:
+```{r looking into the temperature}
+kable(head(Temperature[1:3,]) %>% select (1:7), caption= "Head of temperature file")
+```
+
+It shows hourly temperature (in Kelvin) level by City, In this file, for our *Algorithm*, we will select only the City_Studied. We will need also to discard the first line with the NAs. We will also round the temperature to the nearest with only one decimal to get more entries for the same temperature. 
+
+### 2.1.5 weather_description:
+```{r looking into the weather_description}
+kable(head(Weather_Description[1:3,]) %>% select (1:6), caption= "Head of weather_description file")
+```
+
+It shows hourly Weather Description by City, In this file, for our *Algorithm*, we will select only the City_Studied. We will need also to discard the first line with the missing information. Also we will need to change "sky is clear" with  1 and otherwise 0.  
+
+### 2.1.6 wind_direction:
+```{r looking into the wind_direction}
+kable(head(Wind_Direction[1:3,]) %>% select (1:7), caption= "Head of wind_direction file")
+```
+
+It shows wind direction in degree by City, In this file, for our *Algorithm*, we will select only the city :City_Studied. We will need also to discard the first line with the NAs.  
+
+### 2.1.7 wind_speed:
+```{r looking into the wind_speed}
+kable(head(Wind_Speed[1:3,]) %>% select (1:7), caption= "Head of wind_speed file")
+```
+
+It shows wind speed by City, In this file, for our *Algorithm*, we will select only the :City_Studied. We will need also to discard the first line with the NAs.
+
+### 2.1.8 Work on the six DataFrames  
+  
+We will first keep only City_Studied in each 6 DataFrames.   
+```{r Only Keeps daytime and City_Studied in each 6 file}
+Humidity <- Humidity %>% select(datetime, City_Studied)
+Pressure <- Pressure %>% select(datetime, City_Studied)
+Temperature <- Temperature %>% select(datetime, City_Studied)
+Weather_Description <- Weather_Description %>% select(datetime, City_Studied)
+Wind_Direction <- Wind_Direction %>% select(datetime, City_Studied)
+Wind_Speed <- Wind_Speed %>% select(datetime, City_Studied)
+```
+
+We will then change the columns names to datetime and name of the observable.  
+```{r Set the colnames to datetime and the variable}
+colnames(Humidity) <- c("datetime", "humidity")
+colnames(Pressure) <- c("datetime", "pressure")
+colnames(Temperature) <- c("datetime", "temperature")
+colnames(Weather_Description) <- c("datetime", "weather_des")
+colnames(Wind_Direction) <- c("datetime", "wind_dir")
+colnames(Wind_Speed) <- c("datetime", "wind_speed")
+```
+
+## 2.2 Create our *Dataset* from the six DataFrames   
+
+Create our *Dataset* with the seven variables (datetime, humidity, pressure, temperature, weather_des, wind_Dir, wind_speed). And let's have a look of the head:
+```{r Create our workable set of data: dataset}
+Dataset <- Weather_Description %>% left_join(Pressure, by="datetime")%>% left_join(Temperature, by="datetime")%>% left_join(Humidity, by="datetime")%>% left_join(Wind_Direction, by="datetime")%>% left_join(Wind_Speed, by="datetime")
+kable(head(Dataset), caption= "Dataset Temp")
+```
+
+## 2.3 Clean and Wrangle our *Dataset*  
+
+We need to check class of each variable:  
+```{r Check class of each columns}
+kable(sapply(Dataset, class), col.names= "Class", caption = "Columns")
+```
+
+### 2.3.1 Populate missing entries  
+
+There are missing entries for some variables, we will change the NAs by previous observation for each variable.  
+```{r Replace NA by previous value}
+Dataset$humidity <- ave(Dataset$humidity, cumsum(!is.na(Dataset$humidity)), FUN=function(x) x[1])
+Dataset$pressure <- ave(Dataset$pressure, cumsum(!is.na(Dataset$pressure)), FUN=function(x) x[1])
+Dataset$temperature <- ave(Dataset$temperature, cumsum(!is.na(Dataset$temperature)), FUN=function(x) x[1])
+Dataset$wind_dir <- ave(Dataset$wind_dir, cumsum(!is.na(Dataset$wind_dir)), FUN=function(x) x[1])
+Dataset$wind_speed <- ave(Dataset$wind_speed, cumsum(!is.na(Dataset$wind_speed)), FUN=function(x) x[1])
+```
+
+### 2.3.2 Change datetime to the correct Date and Time format  
+
+We have to change format and class of datetime  to proper date and time.    
+```{r Change format of datetime}
+Dataset$datetime <- ymd_hms(Dataset$datetime)
+```
+Let's introduce Month and Hour to study seasonality
+```{r Create Month and Hour}
+Dataset <-Dataset %>% mutate(Month= month(datetime),Hour=hour(datetime))
+```
+
+### 2.3.3 Populate each entry with the sky_clear  
+
+Let's change string "sky is clear" into a factor "sky_clear" with "1" otherwise by "0".  
+
+```{r Remove 1st line and change factor weather_des with 0 & 1}
+Dataset <- Dataset%>% mutate(sky_clear=as.factor(ifelse(weather_des == "sky is clear", 1, 0)))
+Dataset <- Dataset[-1,-2]
+```
+For each entries add the sky_clear in 24H, so for each entry we know if the sky is clear in 24H.  
+```{r Add the real observed sky_clear in 24H  and the datetime in 24Hto each entries}
+Dim_Dataset <- dim(Dataset)[1]
+to_add_datetime <- Dataset[25:Dim_Dataset,] %>% select(sky_clear)
+colnames(to_add_datetime) <- c("Pred_24H")
+Dataset <-Dataset[1:(Dim_Dataset-24),]
+Dataset <- bind_cols(Dataset, to_add_datetime)
+```
+
+### 2.3.4 Rounding temperature  
+To avoid having too few observations for a given temperature we will round temperature to the nearest with one decimal.  
+```{r rounding temparature to the nearest}
+Dataset$temperature <- round(Dataset$temperature,0)
+```
+
+
+### 2.3.5 *Dataset* ready for analysis  
+
+Let's now have a look at the head of our *Dataset*:
+```{r Show Head of our Final Dataset}
+kable(head(Dataset[-1]), caption= "Dataset (Not showing 1st Columns: datetime)")
+```
+
+### 2.3.6 Clean our workspace  
+We will remove all useless DataFrames to keep and save our *Dataset*.  
+```{r Remove useless and save our final Dataset, echo= FALSE}
+#Let's make some cleanning and delete data and file not usefull
+rm(City, Humidity, Pressure, Temperature, Weather_Description, Wind_Direction, Wind_Speed, Pred_24H, to_add_datetime)
+#if you had save each file in .Rda, now we will delete them
+#file.remove("~/City.Rda","~/Humidity.Rda","~/Temperature.Rda","~/Weather.Rda","~/Wind_Direction.Rda","~/Pressure.Rda", "~/Wind_Speed.Rda")
+save(Dataset, file = "~/Dataset.Rda")
+```
+\newpage
+
+# 3 DATA EXPLORATION AND VISUALIZATION  
+
+## 3.1 General  
+
+```{r Some important figures}
+print(paste0("We have: ",Dim_Dataset-24," records (datetime), for the city: ",City_Studied))
+```
+
+What is the probability that the "sky is clear" in 24H out of all entries:  
+```{r Probability to get Pred_24H 1}
+kable(mean(Dataset$Pred_24H == 1), col.names= "Probability", caption = "Probability to get a clear sky in 24H")
+```
+ What is the probability that the "sky is clear" in 24H knowing that it is clear now: 
+```{r Probability to get Pred_24H 1 and sky_clear 1}
+Now_clear <- Dataset %>% filter(sky_clear == 1)
+kable(mean(Now_clear$Pred_24H ==1), col.names= "Probability",caption = "Probability to get a clear sky in 24H as it is now")
+rm(Now_clear)
+```
+
+## 3.2 Seasonality  
+
+Let's look at distribution of clear_sky per Month and per Hour.
+
+```{r Graph by Month and Hour, fig.height=3,fig.width=3.3}
+# By Month graph, with Months_Year define for labels
+Month_Year<-c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+Dataset%>% group_by(Month) %>% filter(Pred_24H == 1) %>% ggplot(aes(Month)) + geom_histogram(bins=90,fill="darkgoldenrod3") + ggtitle("Monthly Seasonality") + theme_bw() + scale_x_continuous(breaks=seq(1,12,1), labels=Month_Year)+theme(axis.text.x = element_text(angle = 45, hjust = 1,size = 10))
+
+# By Hour graph
+Dataset%>% group_by(Hour) %>% filter(Pred_24H == 1) %>% ggplot(aes(Hour)) + geom_histogram(bins=90,fill="darkgoldenrod3") + ggtitle("Hourly Seasonality") + theme_bw()
+```
+
+There are obviously and logically: seasonality by Month as by Hour, just to mention because Months are compose by 30 or 31 days (Even 28 or 29 for February), we have little bit more observations for longer months, so likely to have little bit clear sky too.  
+
+Let's look at the Probability to get a clear sky by Month and by Hour.  
+
+```{r Graph of probability by Month and Hour, fig.height=3,fig.width=3.3}
+# By Monthly Probability graph, with Months_Year define for labels
+Dataset%>% group_by(Month) %>%  summarize(Proba = mean(Pred_24H==1)) %>%ggplot(aes(Month, Proba)) + geom_point(color="darkgoldenrod3") + ggtitle("Monthly Seasonality Probability") + theme_bw() + scale_x_continuous(breaks=seq(1,12,1), labels=Month_Year)+theme(axis.text.x = element_text(angle = 45, hjust = 1,size = 10))
+
+# By Hourly Probability graph
+Dataset%>% group_by(Hour) %>%  summarize(Proba = mean(Pred_24H==1)) %>% ggplot(aes(Hour, Proba)) + geom_point(color="darkgoldenrod3") + ggtitle("Hourly Seasonality Probability") + theme_bw()
+```
+  
+## 3.3 Temperature, Pressure and Humidity
+
+First we can study the temperature effect to get a clear sky in 24H. Let's have a look at the distribution of clear sky by temperature and for each temperature have a look at the probability to get a clear sky in 24H.   
+
+```{r Graph for temperature,fig.height=3,fig.width=3.3}
+# Distribution by temperature
+Dataset%>% group_by(temperature) %>% filter(Pred_24H == 1) %>% ggplot(aes(temperature)) + geom_histogram(bins=90,fill="darkgoldenrod3") + ggtitle("Clear sky by temperature") + theme_bw()
+
+# By temperature Probability graph
+Dataset%>% group_by(temperature) %>%  summarize(Proba = mean(Pred_24H==1)) %>% ggplot(aes(temperature, Proba)) + geom_point(color="darkgoldenrod3") + ggtitle("Probability by temperature") + theme_bw()
+```
+Except extreme and singular point, "Normal temperature" get all the same probability. Likely that a decision tree Model will fit as <270 and >305 probability are higher to get a clear sky.
+
+Let's look at distribution of clear_sky per usual given measures by meteorologist: humidity and pressure.  
+
+```{r Graph distribution and probability for humidity ,fig.height=3,fig.width=3.3}
+# Distribution by humidity
+Dataset%>% group_by(humidity) %>% filter(Pred_24H == 1) %>% ggplot(aes(humidity)) + geom_histogram(bins=90,fill="darkgoldenrod3") + ggtitle("Clear sky by humidity") + theme_bw()
+
+# By humidity Probability graph
+Dataset%>% group_by(humidity) %>%  summarize(Proba = mean(Pred_24H==1)) %>% ggplot(aes(humidity, Proba)) + geom_point(color="darkgoldenrod3") + ggtitle("Probability by humidity") + theme_bw()
+```
+
+Here also probability are lower or higher when humidity is lower than ~30 or higher than ~80 respectively, so a decision tree Model should fit.  
+Now it is time to look at probability to get a clear sky in 24H by temperature and pressure  
+
+```{r Graph distribution and probability for pressure, fig.height=3,fig.width=3.3}
+# Distribution by presssure
+Dataset%>% group_by(pressure) %>% filter(Pred_24H == 1) %>% ggplot(aes(pressure)) + geom_histogram(bins=90,fill="darkgoldenrod3") + ggtitle("Clear sky by pressure") + theme_bw()
+
+# By pressure Probability graph
+Dataset%>% group_by(pressure) %>%  summarize(Proba = mean(Pred_24H==1)) %>% ggplot(aes(pressure, Proba)) + geom_point(color="darkgoldenrod3") + ggtitle("Probability by pressure") + theme_bw()
+```
+
+Here probability are much higher when pressure is lower than 1000, so a decision tree Model should fit.  
+
+## 3.4 Wind effect
+
+We will now look at the wind effects on a clear sky in 24H, starting with distribution.  
+```{r Graph of distibution and probability for wind direction,fig.height=3,fig.width=3.3}
+# Distribution by wind direction
+Dataset%>% group_by(wind_dir) %>% filter(Pred_24H == 1) %>% ggplot(aes(wind_dir)) + geom_histogram(bins=90,fill="darkgoldenrod3") + ggtitle("Clear sky by wind direction") + theme_bw()
+
+# By wind direction Probability graph
+Dataset%>% group_by(wind_dir) %>%  summarize(Proba = mean(Pred_24H==1)) %>% ggplot(aes(wind_dir, Proba)) + geom_point(color="darkgoldenrod3") + ggtitle("Probability by wind direction") + theme_bw()
+```
+  
+There is also a higher probability for extreme case of pressure.
+  
+```{r Graph of distibution and probability for wind speed, fig.height=3,fig.width=3.3}
+# Distribution by wind speed
+Dataset%>% group_by(wind_speed) %>% filter(Pred_24H == 1) %>% ggplot(aes(wind_speed)) + geom_histogram(bins=90,fill="darkgoldenrod3") + ggtitle("Clear sky by wind speed") + theme_bw()
+
+# By pressure Probability graph
+Dataset%>% group_by(wind_speed) %>%  summarize(Proba = mean(Pred_24H==1)) %>% ggplot(aes(wind_speed, Proba)) + geom_point(color="darkgoldenrod3") + ggtitle("Probability by wind speed") + theme_bw()
+```
+
+Wind speed play a role when values are >10, and chance to get a clear sky are lower.
+
+\newpage
+
+# 4 MACHINE LEARNING MODEL
+
+## 4.1 Creating a train and a test set from our *Dataset*
+
+We will use cross-validation to built our *Algorithm*, we will need to create two sets within *Dataset*, one to train our Models, another one to evaluate its predictions, respectively train_set and test_set. For the partition of our *Dataset* will set the seed to 1, in order to constantly get the same partition. The partition will be 80% and 20% for train set and test set respectively. 
+
+```{r Create our train and test sets }
+#Using function that split Dataset, here in 80% for Train set  and 20% for Test set, we use set.seed in order to get always the same partition.
+set.seed(1,sample.kind = "Rounding")
+test_index <- createDataPartition(y = Dataset$temperature, times = 1,p = 0.2, list = FALSE)
+train_temp <- Dataset[-test_index,]
+test_temp <- Dataset[test_index,]
+  
+#Remove in test_set set the entries where variable are not present in train_set.
+test_and_addTrain <- test_temp 
+test_set  <- test_temp  %>% semi_join(train_temp, by = "pressure") %>% semi_join(train_temp, by = "temperature")%>% semi_join(train_temp, by = "humidity")%>% semi_join(train_temp, by = "wind_dir")%>% semi_join(train_temp, by = "wind_speed") %>% semi_join(train_temp, by = "Month") %>% semi_join(train_temp, by = "Hour")
+
+#To keep Dataset set globally unchanged, we need to add the rating we just removed from the Test set.
+addTrain<-anti_join(test_and_addTrain, test_set)
+train_set<-rbind(train_temp ,addTrain)
+
+#Delete useless Dataset
+rm(test_index, train_temp, test_temp, test_and_addTrain, addTrain)
+
+#Numbers of entries of the test_set and train_set
+nb_train <- dim(train_set)[1]
+nb_test <- dim(test_set)[1]
+```
+
+## 4.2 "One day looks like the next"  
+
+Let's start our machine Learning *Algorithm* with our first Model. It will be a really simple one, as we will just consider that the state of the sky at datetime will be the same in 24H.  
+The accuracy of the Model is given by the probability to get both state of the sky clear. 
+
+```{r Model: One day looks like the next}
+model_results<- NULL
+Acc1=round(mean(Dataset$Pred_24H == Dataset$sky_clear),3)
+model_results<-bind_rows(model_results,tibble(Model = "One day looks like the next", Accuracy = Acc1))
+kable(model_results, caption = "Models Accuracy")
+```
+
+That's give a relatively good accuracy above 2 chances out of 3.  
+
+## 4.3 Simple and Biased "Head and Tail"  
+
+### 4.3.1 Simple Coin  
+
+Our second Model, will be like flipping a coin, Head = 1 (sky clear), Tail = 0 (any other weather description). 
+
+```{r Model: Head and Tail}
+set.seed(1,sample.kind = "Rounding")
+Pred_HT <- sample(c(1,0),nb_test, replace = TRUE, prob= c(0.5, 0.5))
+Acc2 <- mean(Pred_HT == test_set$Pred_24H)
+model_results<-bind_rows(model_results,tibble(Model = "Head and Tail", Accuracy = Acc2))
+kable(model_results, caption = "Models Accuracy")
+```
+
+This Model gave an obvious result of 1 chance on 2, not really useful, but we will improve this Model just below.
+
+### 4.3.1 Biased Coin 
+
+We can introduce a bias in our sample, if we use the global probability to get a clear sky (compute in 3.1) instead of 0.5 (as a normal coin)
+
+```{r Model: Biased Head and Tail}
+p <- mean(test_set$Pred_24H==1)
+set.seed(1,sample.kind = "Rounding")
+Pred_HT <- sample(c(1,0),nb_test, replace = TRUE, prob= c(p, 1-p))
+Acc3 <- mean(Pred_HT == train_set$Pred_24H)
+model_results<-bind_rows(model_results,tibble(Model = "Biased: Head and Tail", Accuracy = Acc3))
+kable(model_results, caption = "Models Accuracy")
+```
+
+We are a bit luckier than flipping a coin, but not as good as our very first simple Model.
+
+## 4.4 Linear Discriminant Analysis 
+
+Let's now try a Linear regression on the different parameters we have now to predict the state of the sky in 24H. Starting with a simple "Linear Discriminant Analysis" on temperature, pressure, humidity, wind direction, wind speed.  
+
+```{r Model LDA}
+train_mod1 <- train(Pred_24H ~ temperature + pressure + humidity + wind_dir + wind_speed, method = "lda", data = train_set)
+lda_preds <- predict(train_mod1, test_set)
+Acc4 <- mean(lda_preds == test_set$Pred_24H)
+model_results<-bind_rows(model_results,tibble(Model = "Linear Discriminant Analysis", Accuracy = Acc4))
+kable(model_results, caption = "Models Accuracy")
+```
+
+This is a jump in accuracy.  
+
+## 4.5 Quadratic Discriminant Analysis 
+
+Let's now try Quadratic regression on the different parameters we have now to predict the state of the sky in 24H. Starting with a simple "Linear Discriminant Analysis on temperature, pressure, humidity, wind direction, wind speed.  
+
+```{r Model QDA}
+train_mod2 <- train(Pred_24H ~ temperature + pressure + humidity + wind_dir + wind_speed, method = "qda", data = train_set)
+qda_preds <- predict(train_mod2, test_set)
+Acc5 <- mean(qda_preds == test_set$Pred_24H)
+model_results<-bind_rows(model_results,tibble(Model = "Quadratic Discriminant Analysis", Accuracy = Acc5))
+kable(model_results, caption = "Models Accuracy")
+```
+
+Not a surprise to see result, close to the previous Model.  
+
+## 4.6 Generalized Linear Model 
+
+Let's now try General Linear Model on easy observable variables as temperature, Month, Hour and the state of the sky now.  
+
+```{r Model GLM}
+train_mod3 <- train(Pred_24H ~ temperature + Hour + Month + sky_clear, method = "glm", data = train_set)
+glm_preds <- predict(train_mod3, test_set)
+Acc6 <- mean(glm_preds == test_set$Pred_24H)
+model_results<-bind_rows(model_results,tibble(Model = "General Linear Model with 4 observations", Accuracy = Acc6))
+kable(model_results, caption = "Models Accuracy")
+```
+
+Better because we introduce the state of sky at datetime as variable in the Model.  
+
+## 4.7 k-Nearest Neighbours 
+
+We will try a k-Nearest Neighbours Model on our four simpliest parameters: temperature, Month, Hour and the state of the sky at datetime. 
+
+```{r Model KNN 4 params }
+train_mod4 <- train(Pred_24H ~ temperature + sky_clear +Hour + Month, method = "knn",data = train_set)
+knn_preds <- predict(train_mod4, test_set)
+Acc7 <- mean(knn_preds == test_set$Pred_24H)
+model_results<-bind_rows(model_results,tibble(Model = "k-Nearest Neighbours Model ", Accuracy = Acc7))
+kable(model_results, caption = "Models Accuracy")
+```
+
+Once again so improvement for the accuracy we are now at 3 chances on 4 to have a good prediction.  
+
+## 4.8 Decision Tree (easy observable parameters)
+
+Let's now try Decision Tree Model on parameters that are easy to observe on a daily basis without complicate instruments. I propose to study a Decision Tree with only the following variables: temperature, Month, Hour and if the sky is clear at datetime.
+
+```{r Model Decision Tree 4 params }
+train_mod5 <- train(Pred_24H ~ temperature + Month + Hour + sky_clear, method = "rpart", tuneGrid = data.frame(cp = seq(0, 0.05, 0.002)),data = train_set)
+dt4_preds <- predict(train_mod5, test_set)
+Acc8 <- mean(dt4_preds == test_set$Pred_24H)
+model_results<-bind_rows(model_results,tibble(Model = "Easy to observe, Decision Tree Model ", Accuracy = Acc8))
+kable(model_results, caption = "Models Accuracy")
+```
+
+Good performance, and easy to use, you just need to measures the temperature, and you get a good accuracy. A Model you can use every day (even without computer!). 
+
+You can find the Decision Tree here:  
+  
+```{r Simple model of Decision Tree, fig.height=7,fig.width=7}
+plot(train_mod5$finalModel)
+text(train_mod5$finalModel)
+```
+
+## 4.9 Decision Tree with all variables
+
+Let's now try a Decision Tree Model all parameters.  
+
+```{r Model Decision Tree full}
+train_mod6 <- train(Pred_24H ~ temperature + pressure + humidity + wind_speed + wind_dir + sky_clear +Hour + Month, method = "rpart", tuneGrid = data.frame(cp = seq(0, 0.05, 0.002)),data = train_set)
+dt_preds <- predict(train_mod6, test_set)
+Acc9 <- mean(dt_preds == test_set$Pred_24H)
+model_results<-bind_rows(model_results,tibble(Model = "Decision Tree Model all Variables", Accuracy = Acc9))
+kable(model_results, caption = "Models Accuracy")
+```
+
+Our best Model so far, let's look at the most important variables:  
+
+```{r Most important variables}
+Var_imp <- as.data.frame(varImp(train_mod6$finalModel))
+Var_imp <- cbind(rownames(Var_imp), Var_imp)
+names(Var_imp) <- c("Variable", "Importance")
+Var_imp <- Var_imp[order(-Var_imp$Importance),]
+row.names(Var_imp) <- NULL
+kable(Var_imp, caption = "Most important Variables")
+```
+
+It is not a surprise to find the state of the sky at datetime as the most important one. Surprisingly temperature as humidity do not play a massive role.  
+
+\newpage
+You can find the Decision Tree here:  
+  
+```{r Decision Tree, fig.height=8,fig.width=9}
+plot(train_mod6$finalModel)
+text(train_mod6$finalModel)
+```
+
+
+\newpage
+# 4 CONCLUSION
+
+Decision Tree give here the best result to predict if the sky will be clear in 24H, it is a bit better than "Regression Models". If you look at the most important variable for the Tree, it is by far the state of the sky at datetime, that's why the simple Model: if sky is clear it will be clear in 24H, is working well too. By far my prefer one, despite its lower accuracy, is the Decision Tree with only 4 parameters, with only one measure (temperature), it gave a good result, decision tree figure can be printed and easy to use! 
+  
+```{r Show results}
+kable(model_results, caption = "Models Accuracy")
+```
+  
+I would have be very happy to try other Model, like Random Forest but computation time make it difficult to run on a personal computer. Internet shows so many different Models in R, it is impressive, there is obviously ways to improve prediction, but here the aim was to show code (R, R-MD) and knowledge rather than accuracy in term of weather modelling.    
+
+Another way to improve our Model is take into account other cities state of sky knowing the longitude, latitude, wind direction and speed, we may improve our prediction.  
+
+The Models we choose are from different category, and show what we learned during theses fabulous eight courses on Edx. Going from absolutely no knowledge of R before starting, I feel relatively confident now, and it is very useful to perform analysis at home and at work. I replace Excel for all data analysis by R/R-Studio, as it is much more flexible and much more powerful.      
+    
+As my first own project in data science, it is a small one, but I learn a lot from it. I use all learnings obtain during the previous eight courses of Havardx "Data Science", honestly it was great fun. And despite its modesty, I am relatively proud of my first long R code, my first use of R Markdown and also my first publish in LaTeX (in fact my second use of them, as I did MovieLens project before).  
+
+Thank you for your time reading this document, I hope you find some useful informations. 
+
